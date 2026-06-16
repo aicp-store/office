@@ -1,0 +1,33 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #fafafa; color: #333; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+.toolbar { width: 48px; min-width: 48px; background: #fff; border-right: 1px solid #e5e5e5; display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 8px; z-index: 10; }
+.toolbar button { width: 36px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.toolbar button:hover { background: #f0f0f0; }
+.toolbar button.active { background: #6366f1; color: #fff; }
+.toolbar .sep { width: 24px; border-top: 1px solid #e5e5e5; }
+.canvas-area { flex: 1; position: relative; overflow: hidden; }
+canvas { width: 100%; height: 100%; cursor: pointer; display: block; }
+.status { position: fixed; bottom: 8px; right: 8px; background: #fff; padding: 4px 10px; border-radius: 12px; font-size: 11px; z-index: 100; border: 1px solid #e5e5e5; }
+.help { position: fixed; bottom: 8px; left: 56px; font-size: 10px; color: #888; z-index: 100; }
+.overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); z-index: 150; display: none; }
+.modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 20px; z-index: 200; display: none; flex-direction: column; gap: 10px; width: 360px; }
+.modal input, .modal textarea { background: #fafafa; border: 1px solid #ddd; color: #333; padding: 10px; font-size: 13px; font-family: inherit; border-radius: 6px; }
+.modal textarea { min-height: 100px; resize: vertical; }
+.modal h3 { font-size: 14px; font-weight: 600; }
+.ctx-menu { position: fixed; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 4px; z-index: 300; display: none; flex-direction: column; gap: 2px; min-width: 160px; }
+.ctx-menu button { background: transparent; border: none; color: #333; padding: 6px 12px; text-align: left; font-size: 12px; border-radius: 4px; margin: 0; width: 100%; cursor: pointer; }
+.ctx-menu button:hover { background: #f0f0f0; } .ctx-menu button.danger { color: #dc2626; } .ctx-menu button.danger:hover { background: #fef2f2; }
+.float-panel { position: fixed; left: 56px; top: 12px; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 14px; z-index: 120; display: none; flex-direction: column; gap: 8px; width: 280px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.float-panel.open { display: flex; }
+.float-panel textarea { width: 100%; background: #fafafa; color: #333; border: 1px solid #ddd; border-radius: 6px; padding: 10px; font-size: 13px; font-family: inherit; outline: none; resize: vertical; min-height: 70px; }
+.float-panel textarea:focus { border-color: #6366f1; }
+.float-panel button { background: #fff; color: #333; border: 1px solid #ddd; border-radius: 6px; padding: 8px; cursor: pointer; font-size: 13px; width: 100%; transition: background 0.15s; }
+.float-panel button:hover { background: #f0f0f0; }
+.float-panel .btn-primary { background: #6366f1; color: #fff; border-color: #6366f1; }
+.float-panel .btn-primary:hover { background: #5558e6; }
+.float-panel .row { display: flex; gap: 6px; } .float-panel .row button { flex: 1; }
+.float-panel label { font-size: 10px; color: #888; }
+.float-panel input[type="color"] { width: 100%; height: 30px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 2px; }
+.float-panel input[type="range"] { width: 100%; }
+.float-panel select { width: 100%; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; padding: 6px; font-size: 12px; }
+#bgImageInput { display: none; }

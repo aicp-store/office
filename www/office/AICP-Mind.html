@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>AICP-Mind</title>
+    <link rel="stylesheet" href="mindmap.css">
+</head>
+<body>
+<div class="toolbar" id="toolbar">
+    <button id="btnAi" title="AI 生成">✨</button>
+    <button id="btnImport" title="导入">📥</button>
+    <div class="sep"></div>
+    <button id="btnEdit" title="编辑">✏️</button>
+    <button id="btnAdd" title="添加子节点">➕</button>
+    <button id="btnDelete" title="删除">🗑️</button>
+    <div class="sep"></div>
+    <button id="btnExpandAll" title="全屏展开">📂</button>
+    <button id="btnCollapseAll" title="全屏收起">📁</button>
+    <button id="btnExportPNG" title="导出图片">🖼️</button>
+    <button id="btnExportMD" title="导出文章">📝</button>
+    <button id="btnExportJSON" title="导出 JSON">💾</button>
+    <div class="sep"></div>
+    <button id="btnSettings" title="设置">⚙️</button>
+</div>
+
+<div class="float-panel" id="aiPanel">
+    <label>AI 生成思维导图</label>
+    <textarea id="aiPrompt" rows="3" placeholder="输入关键词...">AICP 协议</textarea>
+    <button class="btn-primary" id="aiGenerateBtn">✨ 生成</button>
+</div>
+
+<div class="float-panel" id="settingsPanel">
+    <label>背景图</label>
+    <div class="row"><button id="bgImageBtn" style="flex:1;">📁 选择图片</button><button id="bgImageClear" style="flex:1;">✕ 清除</button></div>
+    <input type="file" id="bgImageInput" accept="image/*">
+    <label>背景透明</label><input type="range" id="bgOpacity" min="0" max="100" value="10">
+    <label>背景色</label><input type="color" id="bgColor" value="#fafafa">
+    <label>节点色</label><input type="color" id="nodeColor" value="#ffffff">
+    <label>文字色</label><input type="color" id="textColor" value="#333333">
+    <label>选中色</label><input type="color" id="focusColor" value="#6366f1">
+    <label>选中文字色</label><input type="color" id="focusTextColor" value="#ffffff">
+    <label>线条色</label><input type="color" id="lineColor" value="#6366f1">
+    <label>字体</label><select id="fontFamily"><option value="system-ui" selected>系统默认</option><option value="serif">衬线体</option><option value="monospace">等宽字体</option></select>
+    <label>字体大小</label><select id="fontSize"><option value="11">11px</option><option value="12" selected>12px</option><option value="13">13px</option><option value="14">14px</option><option value="16">16px</option></select>
+    <button id="resetSettingsBtn">↻ 恢复默认</button>
+</div>
+
+<div class="canvas-area"><canvas id="canvas"></canvas></div>
+<div class="status" id="status">就绪</div>
+<div class="help">单击选中 | 双击展开 | →展开 | ←收起 | ↑↓兄弟 | 右键菜单 | Esc关闭 | Ctrl+E全屏</div>
+<div class="overlay" id="overlay"></div>
+<div class="modal" id="editModal"><h3>✏️ 编辑</h3><textarea id="editInput" rows="4"></textarea><div style="display:flex;gap:8px;"><button id="saveBtn" style="flex:1;">保存</button><button id="cancelBtn" style="flex:1;">取消</button></div></div>
+<div class="modal" id="importModal"><h3>📥 导入 JSON</h3><textarea id="importInput" rows="10" placeholder="粘贴 JSON..."></textarea><div style="display:flex;gap:8px;"><button id="importSaveBtn" style="flex:1;">导入</button><button id="importCancelBtn" style="flex:1;">取消</button></div></div>
+<div class="ctx-menu" id="ctxMenu">
+    <button id="ctxExpand">→ 展开子节点</button>
+    <button id="ctxAI">🤖 AI 展开</button>
+    <button id="ctxEdit">✏️ 编辑</button>
+    <button id="ctxAddChild">➕ 添加子节点</button>
+    <button id="ctxDelete" class="danger">🗑️ 删除</button>
+</div>
+
+<script src="mindmap.js"></script>
+</body>
+</html>

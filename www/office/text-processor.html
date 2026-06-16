@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 富文本编辑器 | AICP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fafafa; color: #333; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        .toolbar { background: #fff; padding: 10px 16px; border-bottom: 1px solid #e5e5e5; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .toolbar select, .toolbar button { padding: 6px 12px; background: #fff; border: 1px solid #ddd; color: #333; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; }
+        .toolbar button { background: #6366f1; color: #fff; border-color: #6366f1; }
+        .toolbar button:hover { background: #5558e6; }
+        .toolbar button.btn-secondary { background: #fff; color: #333; border-color: #ddd; }
+        .toolbar button.btn-secondary:hover { background: #f0f0f0; }
+        .main { flex: 1; display: flex; overflow: hidden; }
+        .panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .panel.left { border-right: 1px solid #e5e5e5; }
+        .panel-header { padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e5e5; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+        textarea { flex: 1; background: #fafafa; color: #333; border: none; padding: 16px; font-family: 'Consolas','Monaco',monospace; font-size: 13px; resize: none; outline: none; line-height: 1.6; }
+        textarea:focus { background: #fff; }
+        .preview-area { flex: 1; overflow-y: auto; background: #f5f5f5; }
+        .page-wrapper { margin-bottom: 24px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5; background: #fff; }
+        .page-header { background: #fafafa; padding: 6px 14px; font-size: 11px; color: #888; border-bottom: 1px solid #f0f0f0; }
+        .page-content { min-height: 300px; padding: 40px; position: relative; }
+        .page-content img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; pointer-events: none; }
+        .page-content .img-resize-wrapper { 
+    display: inline-block; 
+    resize: both; 
+    overflow: auto; 
+    max-width: 100%; 
+    min-width: 80px; 
+    min-height: 60px; 
+    border-radius: 6px; 
+    cursor: move; 
+    user-select: none; 
+    /* float: right; */  /* ❌ 过时 */
+    margin-left: auto;    /* ✅ 替代 float: right */
+    margin-bottom: 8px; 
+    width: 40%; 
+}
+        .page-content .img-resize-wrapper:focus { outline: 2px solid #6366f1; }
+        .page-content .img-resize-wrapper.dragging { opacity: 0.7; z-index: 10; position: absolute !important; float: none !important; }
+        .page-toolbar { background: #fafafa; padding: 6px 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #f0f0f0; }
+        .page-toolbar button { background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-family: inherit; }
+        .page-toolbar button:hover { background: #f0f0f0; }
+        .page-toolbar select { padding: 4px 6px; border-radius: 4px; border: 1px solid #ddd; font-size: 11px; font-family: inherit; background: #fff; }
+        .page-toolbar input[type="number"] { width: 40px; text-align: center; padding: 2px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; }
+        .color-btn { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #ddd; cursor: pointer; display: inline-block; }
+        .color-btn:hover { border-color: #6366f1; }
+        .status { padding: 6px 12px; font-size: 12px; color: #888; }
+        .status.loading { color: #6366f1; } .status.success { color: #22c55e; } .status.error { color: #dc2626; }
+        .action-group { display: flex; gap: 8px; margin-left: auto; }
+        .style-business .page-content { background: linear-gradient(135deg,#667eea,#764ba2); color: white; }
+        .style-business .page-content h1 { color: #ffd700; }
+        .style-academic .page-content { background: #fdf8ed; color: #2c3e50; font-family: 'Times New Roman',serif; }
+        .style-academic .page-content h1 { color: #8B0000; }
+        .style-tech .page-content { background: #0a0a2a; color: #00ffcc; font-family: 'Monaco',monospace; }
+        .style-tech .page-content h1 { text-shadow: 0 0 10px #00ffcc; color: #00ffcc; }
+        .style-simple .page-content { background: white; color: #333; font-family: 'Helvetica',sans-serif; }
+        .style-simple .page-content h1 { color: #1a73e8; }
+        .style-dark .page-content { background: #1a1a2e; color: #eee; }
+        .style-dark .page-content h1 { color: #e94560; }
+        @media print { body { background: white; } .toolbar, .panel.left, .panel-header, .page-header, .status, .page-toolbar { display: none !important; } .panel { border: none !important; } .preview-area { background: white; overflow: visible; } .page-wrapper { box-shadow: none; page-break-after: always; margin: 0; border-radius: 0; } .page-content { min-height: auto; padding: 20px; } .page-content .img-resize-wrapper { resize: none; overflow: hidden; float: none !important; position: static !important; } }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <select id="actionSelect">
+            <option value="summary">📋 摘要</option>
+            <option value="expand">📈 扩写</option>
+            <option value="polish">✨ 润色</option>
+            <option value="translate">🌐 翻译</option>
+            <option value="outline">📑 大纲</option>
+            <option value="ppt_ready">🎨 转PPT</option>
+        </select>
+        <select id="styleSelect">
+            <option value="business">💼 商务</option>
+            <option value="academic">📚 学术</option>
+            <option value="tech">🚀 科技</option>
+            <option value="simple">✨ 简约</option>
+            <option value="dark">🌙 深色</option>
+        </select>
+        <select id="langSelect" style="display:none;"><option value="中文">中文</option><option value="英文">English</option><option value="日文">日本語</option></select>
+        <button id="processBtn">🚀 执行</button>
+        <div class="action-group">
+            <button class="btn-secondary" id="autoImageBtn">🖼️ 配图</button>
+            <button class="btn-secondary" id="copyHTMLBtn">📋 复制</button>
+            <button class="btn-secondary" id="exportWordBtn">📄 导出Word</button>
+            <button class="btn-secondary" id="printPdfBtn">🖨️ 打印</button>
+            <button class="btn-secondary" id="clearBtn">🗑️ 清空</button>
+        </div>
+        <div id="status" class="status"></div>
+    </div>
+    <div class="main">
+        <div class="panel left"><div class="panel-header">📝 Markdown 编辑区</div><textarea id="markdownInput" placeholder="用 --- 分页..."></textarea></div>
+        <div class="panel"><div class="panel-header">👁️ 富文本预览（拖拽移动 + 右下角缩放）</div><div class="preview-area" id="previewArea"><div style="color:#888;text-align:center;padding:40px;">输入 Markdown</div></div></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        var API_BASE = window.location.origin;
+        var PEXELS_KEY = 'cKayjDFKeYdANdL7ZCVcNs5SwEJbjiIg3mj27ZX8ZYx8TIfg8PCau737';
+        var g = function(id) { return document.getElementById(id); };
+        var pageEditors = [];
+        var savedRange = null;
+        
+        function getStyleClass() { var m = { business:'style-business', academic:'style-academic', tech:'style-tech', simple:'style-simple', dark:'style-dark' }; return m[g('styleSelect').value] || 'style-simple'; }
+        function setStatus(msg, type) { var el = g('status'); el.textContent = msg; el.className = 'status ' + (type||'loading'); }
+        function saveSelection() { var sel = window.getSelection(); if (sel.rangeCount > 0) savedRange = sel.getRangeAt(0).cloneRange(); }
+        function restoreSelection(content) { if (savedRange && content.contains(savedRange.commonAncestorContainer)) { var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(savedRange.cloneRange()); } }
+        
+        function wrapSelection(content, tag, style) {
+            content.focus(); if (!savedRange || !content.contains(savedRange.commonAncestorContainer)) return false;
+            var range = savedRange.cloneRange(); if (range.collapsed) return false;
+            var span = document.createElement(tag); if (style) span.setAttribute('style', style);
+            try { range.surroundContents(span); } catch(e) { var frag = range.extractContents(); span.appendChild(frag); range.insertNode(span); }
+            var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); content.normalize(); return true;
+        }
+        
+        function applyFormat(content, cmd, value) {
+            if (cmd === 'bold') { wrapSelection(content, 'b'); return; }
+            if (cmd === 'italic') { wrapSelection(content, 'i'); return; }
+            if (cmd === 'underline') { wrapSelection(content, 'u'); return; }
+            if (cmd === 'foreColor') { wrapSelection(content, 'span', 'color:' + value); return; }
+            if (cmd === 'fontSize') { wrapSelection(content, 'span', 'font-size:' + value + 'px'); return; }
+            if (cmd === 'fontName') { wrapSelection(content, 'span', 'font-family:' + value); return; }
+            if (cmd === 'formatBlock') { content.focus(); restoreSelection(content); document.execCommand('formatBlock', false, value); }
+        }
+        
+        function insertImageAtCursor(content, imgUrl) {
+            var wrapper = document.createElement('div'); wrapper.className = 'img-resize-wrapper';
+            wrapper.setAttribute('contenteditable', 'false'); wrapper.style.position = 'relative';
+            var img = document.createElement('img'); img.src = imgUrl; img.draggable = false; img.style.pointerEvents = 'none';
+            wrapper.appendChild(img);
+            var dragging = false, startX, startY, startLeft, startTop;
+            wrapper.addEventListener('mousedown', function(e) {
+                var rect = wrapper.getBoundingClientRect();
+                if (e.clientX > rect.right - 15 && e.clientY > rect.bottom - 15) return;
+                if (e.target === wrapper || e.target === img) { e.preventDefault(); dragging = true; wrapper.classList.add('dragging'); rect = wrapper.getBoundingClientRect(); startX = e.clientX; startY = e.clientY; startLeft = rect.left; startTop = rect.top; wrapper.style.float = 'none'; wrapper.style.position = 'absolute'; wrapper.style.left = (startLeft - wrapper.parentElement.getBoundingClientRect().left) + 'px'; wrapper.style.top = (startTop - wrapper.parentElement.getBoundingClientRect().top) + 'px'; }
+            });
+            document.addEventListener('mousemove', function(e) { if (!dragging) return; var dx = e.clientX - startX, dy = e.clientY - startY; wrapper.style.left = (startLeft - wrapper.parentElement.getBoundingClientRect().left + dx) + 'px'; wrapper.style.top = (startTop - wrapper.parentElement.getBoundingClientRect().top + dy) + 'px'; });
+            document.addEventListener('mouseup', function() { if (dragging) { dragging = false; wrapper.classList.remove('dragging'); } });
+            wrapper.addEventListener('click', function(e) { if (!dragging) { e.stopPropagation(); document.querySelectorAll('.img-resize-wrapper').forEach(function(w) { w.style.outline = 'none'; }); wrapper.style.outline = '2px solid #6366f1'; } });
+            content.appendChild(wrapper); content.appendChild(document.createElement('br'));
+        }
+        
+        function makePageToolbar(content) {
+            var toolbar = document.createElement('div'); toolbar.className = 'page-toolbar';
+            toolbar.innerHTML = '<button data-cmd="bold"><b>B</b></button>' +
+                '<button data-cmd="italic"><i>I</i></button>' +
+                '<button data-cmd="underline"><u>U</u></button>' +
+                '<select data-cmd="formatBlock"><option value="p">正文</option><option value="h1">标题1</option><option value="h2">标题2</option><option value="h3">标题3</option></select>' +
+                '<select data-cmd="fontName"><option value="">字体</option><option value="Arial">Arial</option><option value="Times New Roman">Times</option><option value="Courier New">Courier</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="SimSun">宋体</option><option value="SimHei">黑体</option><option value="KaiTi">楷体</option></select>' +
+                '<input type="number" data-cmd="fontSize" value="16" min="8" max="72" placeholder="字号">' +
+                '<span class="color-btn" data-cmd="foreColor" data-color="#333333" style="background:#333333;"></span>' +
+                '<span class="color-btn" data-cmd="foreColor" data-color="#dc2626" style="background:#dc2626;"></span>' +
+                '<span class="color-btn" data-cmd="foreColor" data-color="#6366f1" style="background:#6366f1;"></span>' +
+                '<span class="color-btn" data-cmd="foreColor" data-color="#22c55e" style="background:#22c55e;"></span>' +
+                '<span class="color-btn" data-cmd="foreColor" data-color="#f59e0b" style="background:#f59e0b;"></span>' +
+                '<button data-cmd="insertImage">🖼️</button>';
+            toolbar.querySelectorAll('button, .color-btn').forEach(function(el) {
+                el.addEventListener('mousedown', function(e) { saveSelection(); if (el.classList.contains('color-btn')) e.preventDefault(); });
+                el.addEventListener('click', function(e) {
+                    e.preventDefault(); var cmd = el.getAttribute('data-cmd'); var value = el.getAttribute('data-color') || el.value;
+                    if (cmd === 'insertImage') { var input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = function() { var file = input.files[0]; if (!file) return; var reader = new FileReader(); reader.onload = function(ev) { content.focus(); insertImageAtCursor(content, ev.target.result); }; reader.readAsDataURL(file); }; input.click(); return; }
+                    restoreSelection(content); applyFormat(content, cmd, value);
+                });
+            });
+            toolbar.querySelectorAll('select').forEach(function(el) { el.addEventListener('mousedown', function(e) { saveSelection(); e.stopPropagation(); }); el.addEventListener('change', function(e) { var cmd = el.getAttribute('data-cmd'); if (cmd === 'formatBlock') { content.focus(); restoreSelection(content); document.execCommand('formatBlock', false, el.value); return; } if (el.value) { restoreSelection(content); applyFormat(content, cmd, el.value); } }); });
+            toolbar.querySelectorAll('input[type="number"]').forEach(function(el) { el.addEventListener('mousedown', function(e) { saveSelection(); e.stopPropagation(); }); el.addEventListener('change', function(e) { if (el.value) { restoreSelection(content); applyFormat(content, el.getAttribute('data-cmd'), el.value); } }); });
+            return toolbar;
+        }
+        
+        function renderPreview() {
+            var md = g('markdownInput').value; var previewArea = g('previewArea'); previewArea.innerHTML = ''; pageEditors = [];
+            if (!md.trim()) { previewArea.innerHTML = '<div style="color:#888;text-align:center;padding:40px;">输入 Markdown</div>'; return; }
+            var sc = getStyleClass();
+            md.split(/\n---\n/).forEach(function(page, idx) {
+                var c = page.trim(); if (!c && idx === 0 && md.split(/\n---\n/).length === 1) c = page; if (!c) return;
+                var wrapper = document.createElement('div'); wrapper.className = 'page-wrapper ' + sc;
+                var content = document.createElement('div'); content.className = 'page-content'; content.setAttribute('contenteditable', 'true');
+                content.innerHTML = marked.parse(c);
+                var toolbar = makePageToolbar(content);
+                wrapper.appendChild(toolbar); wrapper.appendChild(content);
+                previewArea.appendChild(wrapper);
+                pageEditors.push({ wrapper: wrapper, content: content });
+            });
+        }
+        
+        function getAllHTML() { return pageEditors.map(function(p) { return '<div style="page-break-after:always;padding:40px;">' + p.content.innerHTML + '</div>'; }).join(''); }
+        
+        function exportWord() {
+            var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;font-size:14px;line-height:1.8;color:#333;}h1{font-size:24px;}h2{font-size:18px;}img{max-width:100%;}@page{size:A4;margin:2cm;}</style></head><body>' + getAllHTML() + '</body></html>';
+            var blob = new Blob([html], {type: 'application/msword'});
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'document.doc'; a.click();
+            setStatus('已导出 Word','success');
+        }
+        
+        async function autoImage() {
+            if (pageEditors.length === 0) { setStatus('无内容','error'); return; }
+            setStatus('搜索图片中...','loading');
+            var md = g('markdownInput').value, pages = md.split(/\n---\n/);
+            for (var i = 0; i < pages.length; i++) { if (i >= pageEditors.length) break; var titleMatch = pages[i].match(/^##\s*(.+)/m); var keyword = titleMatch ? titleMatch[1] : (pages[i].split('\n')[0] || 'abstract'); try { var imgUrl = await searchPexels(keyword); if (imgUrl) insertImageAtCursor(pageEditors[i].content, imgUrl); } catch(e) {} }
+            setStatus('配图完成','success');
+        }
+        
+        async function searchPexels(keyword) { try { var res = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(keyword) + '&per_page=1&orientation=landscape', { headers: { 'Authorization': PEXELS_KEY } }); var data = await res.json(); if (data.photos && data.photos.length > 0) return data.photos[0].src.large; } catch(e) {} return null; }
+        
+        async function process() {
+            var text = g('markdownInput').value; if (!text.trim()) { setStatus('请输入内容','error'); return; }
+            setStatus('AI 处理中...','loading');
+            try {
+                var body = { text: text, action: g('actionSelect').value, style: g('styleSelect').value };
+                if (g('actionSelect').value === 'translate') body.target_lang = g('langSelect').value;
+                const project = window.location.pathname.split('/')[1];
+const API_URL = `/api/applications/${project}/processor`;
+
+// process 函数里
+var res = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+        action: g('actionSelect').value,
+        text: text,
+        style: g('styleSelect').value
+    })
+});
+                var data = await res.json();
+                if (data.error) { setStatus(data.error,'error'); return; }
+                if (g('actionSelect').value === 'ppt_ready' && data.result.indexOf('===SLIDE===') !== -1) data.result = data.result.replace(/===SLIDE===/g, '\n---\n');
+                g('markdownInput').value = data.result; renderPreview(); setStatus('处理完成','success');
+                if (g('actionSelect').value === 'ppt_ready') setTimeout(function() { autoImage(); }, 500);
+            } catch(err) { setStatus(err.message,'error'); }
+        }
+        
+        function copyHTML() { var h = getAllHTML(); if (!h) { setStatus('无内容','error'); return; } navigator.clipboard.writeText(h); setStatus('已复制','success'); }
+        function printPDF() { window.print(); }
+        function clearAll() { g('markdownInput').value = ''; g('previewArea').innerHTML = '<div style="color:#888;text-align:center;padding:40px;">输入 Markdown</div>'; pageEditors = []; setStatus('已清空','success'); }
+        
+        g('styleSelect').onchange = renderPreview;
+        g('actionSelect').onchange = function() { g('langSelect').style.display = g('actionSelect').value === 'translate' ? 'inline-block' : 'none'; };
+        g('markdownInput').addEventListener('input', renderPreview);
+        g('processBtn').onclick = process;
+        g('autoImageBtn').onclick = autoImage;
+        g('copyHTMLBtn').onclick = copyHTML;
+        g('exportWordBtn').onclick = exportWord;
+        g('printPdfBtn').onclick = printPDF;
+        g('clearBtn').onclick = clearAll;
+
+        var example = '# AI PPT 生成器\n\n## 什么是 AICP？\n- 信封即状态\n- 路由即接口\n- AI 无状态\n\n---\n\n## 核心特点\n1. 简单\n2. 快速\n3. 灵活\n\n---\n\n## 怎么用？\n1. 输入文字\n2. 选择操作\n3. AI 生成\n4. 实时预览\n5. 打印 PDF';
+        var params = new URLSearchParams(window.location.search);
+        var urlContent = params.get('content');
+        g('markdownInput').value = urlContent ? decodeURIComponent(urlContent) : example;
+        renderPreview();
+    </script>
+</body>
+</html>

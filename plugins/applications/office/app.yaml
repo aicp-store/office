@@ -1,0 +1,17 @@
+name: Office 
+id: {project}
+auto_start: true
+version: 1.0.0
+author: dvwoo
+init_action: init
+description: 五件套,可以当幻灯片演示的动画思维导图、乱文本转MD、AI字处理工具自动插图、任意文档网页转MD，分解项目转md文档
+dependencies:
+  pip:
+    - python-docx
+    - openpyxl
+    - python-pptx
+    - requests
+    - beautifulsoup4
+    - markdownify
+    - PyMuPDF
+    - pdfplumber

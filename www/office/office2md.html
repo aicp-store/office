@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office to Markdown Converter</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        header h1 { font-size: 18px; font-weight: 600; }
+        header .actions { display: flex; gap: 8px; }
+
+        .btn {
+            padding: 7px 14px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+        .btn.primary:hover { background: #1557b0; }
+        .btn.accent { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .btn.accent:hover { background: #6d28d9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            width: 300px;
+            min-width: 300px;
+            background: #fafafa;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 16px;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: #fff;
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: #1a73e8;
+            background: #e8f0fe;
+        }
+        .drop-zone .icon { font-size: 32px; margin-bottom: 6px; }
+        .drop-zone .title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+        .drop-zone .hint { font-size: 11px; color: #888; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid #e0e0e0;
+        }
+        .divider span {
+            font-size: 11px;
+            color: #999;
+            white-space: nowrap;
+        }
+
+        .url-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .url-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .url-input:focus { border-color: #1a73e8; }
+
+        .file-info {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .file-info .fname {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+        .file-info .ftype { font-size: 12px; color: #888; margin-bottom: 8px; }
+        .file-info .status {
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        .file-info .status.loading { background: #fff3cd; color: #856404; }
+        .file-info .status.ok { background: #d4edda; color: #155724; }
+        .file-info .status.error { background: #f8d7da; color: #721c24; }
+        .file-info .images-info { font-size: 12px; color: #666; }
+        .file-info .export-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .file-info .export-actions .btn { font-size: 11px; padding: 5px 10px; }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+        .preview-toolbar .mode-btn {
+            padding: 5px 10px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .preview-toolbar .mode-btn.active { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
+
+        .preview-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 32px;
+            background: #fff;
+        }
+        .preview-content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .preview-content img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .empty-preview {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: #bbb;
+            font-size: 15px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📄 Office / PDF / Web → Markdown</h1>
+        <div class="actions" id="headerActions">
+            <button class="btn accent" id="btnSendToMind" disabled>🧠 发送到思维导图</button>
+            <button class="btn" id="btnDownload" disabled>⬇ Download ZIP</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="drop-zone" id="dropZone">
+                <div class="icon">📁</div>
+                <div class="title">Drop file here</div>
+                <div class="hint">or click · .docx .xlsx .pptx .pdf</div>
+                <input type="file" id="fileInput" accept=".docx,.xlsx,.pptx,.pdf" style="display:none;">
+            </div>
+
+            <div class="divider"><span>or paste URL</span></div>
+
+            <div class="url-section">
+                <input type="url" class="url-input" id="urlInput" placeholder="https://...">
+                <button class="btn primary" id="btnFetch" style="width:100%;">📥 Fetch & Convert</button>
+            </div>
+
+            <div class="file-info" id="fileInfo" style="display:none;">
+                <div class="fname" id="fileName"></div>
+                <div class="ftype" id="fileType"></div>
+                <div class="status" id="fileStatus"></div>
+                <div class="images-info" id="imagesList"></div>
+                <div class="export-actions">
+                    <button class="btn accent" id="btnSendToMind2">🧠 思维导图</button>
+                    <button class="btn" id="btnDownload2">⬇ ZIP</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel" id="rightPanel">
+            <div class="preview-toolbar" id="previewToolbar" style="display:none;">
+                <button class="mode-btn active" id="btnPreview">👁 Preview</button>
+                <button class="mode-btn" id="btnSource">&lt;/&gt; Source</button>
+            </div>
+            <div class="preview-content markdown-body" id="previewContent" style="display:none;"></div>
+            <div class="empty-preview" id="emptyPreview">Drop a file or paste a URL to start</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const project = window.location.pathname.split('/')[1];
+            const API = `/api/applications/${project}`;
+
+            const uploadPort = parseInt(window.location.port) + 2;
+            const UPLOAD_URL = `${window.location.protocol}//${window.location.hostname}:${uploadPort}/upload`;
+
+            let currentMd = '';
+            let currentImages = [];
+            let currentOriginalName = '';
+            let currentImagesDir = '';
+
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileType = document.getElementById('fileType');
+            const fileStatus = document.getElementById('fileStatus');
+            const imagesList = document.getElementById('imagesList');
+            const previewToolbar = document.getElementById('previewToolbar');
+            const previewContent = document.getElementById('previewContent');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const btnPreview = document.getElementById('btnPreview');
+            const btnSource = document.getElementById('btnSource');
+            const btnDownload = document.getElementById('btnDownload');
+            const btnDownload2 = document.getElementById('btnDownload2');
+            const btnSendToMind = document.getElementById('btnSendToMind');
+            const btnSendToMind2 = document.getElementById('btnSendToMind2');
+            const urlInput = document.getElementById('urlInput');
+            const btnFetch = document.getElementById('btnFetch');
+
+            let currentMode = 'preview';
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) handleFile(files[0]);
+            });
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+            });
+
+            btnFetch.addEventListener('click', () => {
+                const url = urlInput.value.trim();
+                if (!url) { alert('Please enter a URL'); return; }
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    alert('URL must start with http:// or https://');
+                    return;
+                }
+                handleUrl(url);
+            });
+
+            urlInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') btnFetch.click();
+            });
+
+            async function safeParseJSON(response) {
+                const text = await response.text();
+                try { return JSON.parse(text); } catch (e) {
+                    console.error('Response:', text.substring(0, 500));
+                    throw new Error('Server returned invalid response');
+                }
+            }
+
+            function showLoading(name, type) {
+                fileName.textContent = name;
+                fileType.textContent = type;
+                fileStatus.textContent = '⏳ Converting...';
+                fileStatus.className = 'status loading';
+                imagesList.textContent = '';
+                fileInfo.style.display = 'block';
+                previewContent.style.display = 'none';
+                emptyPreview.style.display = 'none';
+                previewToolbar.style.display = 'none';
+                setButtonsEnabled(false);
+            }
+
+            function showResult(data) {
+                currentMd = data.md_content;
+                currentImages = data.images || [];
+                currentOriginalName = data.original_name;
+                currentImagesDir = data.images_dir;
+                fileStatus.textContent = `✅ ${data.file_type}`;
+                fileStatus.className = 'status ok';
+                if (currentImages.length > 0) {
+                    imagesList.textContent = `📸 ${currentImages.length} images`;
+                }
+                previewToolbar.style.display = 'flex';
+                previewContent.style.display = 'block';
+                emptyPreview.style.display = 'none';
+                setButtonsEnabled(true);
+                currentMode = 'preview';
+                btnPreview.classList.add('active');
+                btnSource.classList.remove('active');
+                renderPreview();
+            }
+
+            function showError(msg) {
+                fileStatus.textContent = `❌ ${msg}`;
+                fileStatus.className = 'status error';
+                previewToolbar.style.display = 'none';
+                previewContent.style.display = 'none';
+                emptyPreview.style.display = 'flex';
+                setButtonsEnabled(false);
+            }
+
+            function setButtonsEnabled(enabled) {
+                btnDownload.disabled = !enabled;
+                btnDownload2.disabled = !enabled;
+                btnSendToMind.disabled = !enabled;
+                btnSendToMind2.disabled = !enabled;
+            }
+
+            async function handleUrl(url) {
+                showLoading(url, 'Web Page');
+                try {
+                    const res = await fetch(`${API}/upload`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'fetch_url', url })
+                    });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await safeParseJSON(res);
+                    if (data.ok) showResult(data);
+                    else throw new Error(data.error || 'Conversion failed');
+                } catch (err) {
+                    showError(err.message);
+                }
+            }
+
+            async function handleFile(file) {
+                const validExts = ['.docx', '.xlsx', '.pptx', '.pdf'];
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (!validExts.includes(ext)) {
+                    alert('Unsupported format');
+                    return;
+                }
+                showLoading(file.name, ext.toUpperCase() + ' file');
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    fileStatus.textContent = '⏳ Uploading...';
+                    const uploadRes = await fetch(UPLOAD_URL, { method: 'POST', body: formData });
+                    if (!uploadRes.ok) throw new Error(`Upload HTTP ${uploadRes.status}`);
+                    const uploadData = await safeParseJSON(uploadRes);
+                    const filePath = uploadData.file_path || uploadData.path || uploadData.filepath;
+                    if (!filePath) throw new Error('No file_path in response');
+
+                    fileStatus.textContent = '⏳ Converting...';
+                    const res = await fetch(`${API}/upload`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'upload', file_path: filePath })
+                    });
+                    if (!res.ok) throw new Error(`Convert HTTP ${res.status}`);
+                    const data = await safeParseJSON(res);
+                    if (data.ok) showResult(data);
+                    else throw new Error(data.error || 'Conversion failed');
+                } catch (err) {
+                    showError(err.message);
+                }
+            }
+
+            function renderPreview() {
+                if (currentMode === 'preview') {
+                    if (window.markdownit) {
+                        previewContent.innerHTML = window.markdownit({ html: true, breaks: true, linkify: true }).render(currentMd);
+                    } else {
+                        previewContent.innerHTML = '<p>Loading parser...</p>';
+                    }
+                } else {
+                    previewContent.innerHTML = `<pre>${escapeHtml(currentMd)}</pre>`;
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // ═══ MD → Tree → 思维导图 ═══
+            function mdToTree(md) {
+    const lines = md.split('\n');
+    const root = { text: 'Root', children: [] };
+    const headingStack = [{ node: root, level: 0 }];
+    let listStack = [];
+
+    function resetListStack() {
+        listStack = [];
+    }
+
+    // Track the last paragraph text to attach as leaf
+    let pendingParagraphs = [];
+
+    function flushParagraphs() {
+        if (pendingParagraphs.length === 0) return;
+        const text = pendingParagraphs.join(' ').trim();
+        pendingParagraphs = [];
+        if (!text || text.length < 5) return;
+
+        // Find current parent
+        const parent = headingStack.length > 0 
+            ? headingStack[headingStack.length - 1].node 
+            : (listStack.length > 0 ? listStack[listStack.length - 1].node : root);
+
+        // Don't add if parent already has same text as child (avoid self-reference)
+        const leaf = { text: truncateText(text, 60), children: [] };
+        parent.children.push(leaf);
+    }
+
+    function truncateText(text, maxLen) {
+        if (text.length <= maxLen) return text;
+        // Cut at word boundary
+        const cut = text.lastIndexOf(' ', maxLen);
+        return text.substring(0, cut > 0 ? cut : maxLen) + '...';
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Skip empty lines
+        if (!trimmed) {
+            flushParagraphs();
+            continue;
+        }
+
+        // Skip horizontal rules, images, blockquotes (not content for tree)
+        if (/^(---|\*\*\*|___|>|!\[)/.test(trimmed)) {
+            flushParagraphs();
+            continue;
+        }
+
+        // Skip table rows
+        if (/^\|/.test(trimmed)) {
+            flushParagraphs();
+            continue;
+        }
+
+        const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
+        const listMatch = trimmed.match(/^(\s*)[-*+]\s+(.+)/);
+        const numberedMatch = trimmed.match(/^(\s*)\d+[\.\)]\s+(.+)/);
+
+        if (headingMatch) {
+            flushParagraphs();
+            resetListStack();
+            const level = headingMatch[1].length;
+            const text = headingMatch[2].trim();
+            if (!text) continue;
+
+            const newNode = { text, children: [] };
+
+            while (headingStack.length > 0 && headingStack[headingStack.length - 1].level >= level) {
+                headingStack.pop();
+            }
+
+            if (headingStack.length > 0) {
+                headingStack[headingStack.length - 1].node.children.push(newNode);
+            } else {
+                root.children.push(newNode);
+            }
+
+            headingStack.push({ node: newNode, level });
+            listStack = [{ indent: -1, node: newNode }];
+
+        } else if (listMatch || numberedMatch) {
+            flushParagraphs();
+            if (headingStack.length === 0) continue;
+
+            const match = listMatch || numberedMatch;
+            const indent = match[1].length;
+            const text = (listMatch ? listMatch[2] : numberedMatch[2]).trim();
+            if (!text || text.length > 80) continue;
+
+            const leaf = { text, children: [] };
+
+            while (listStack.length > 0 && listStack[listStack.length - 1].indent >= indent) {
+                listStack.pop();
+            }
+
+            if (listStack.length > 0) {
+                listStack[listStack.length - 1].node.children.push(leaf);
+            }
+
+            listStack.push({ indent, node: leaf });
+
+        } else {
+            // Regular paragraph — accumulate
+            if (trimmed.length > 5) {
+                pendingParagraphs.push(trimmed);
+            }
+        }
+    }
+
+    flushParagraphs();
+
+    if (root.children.length === 1) {
+        return root.children[0];
+    }
+    if (root.children.length > 1) {
+        const title = currentOriginalName.replace(/\.[^.]+$/, '') || 'Document';
+        return { text: title, children: root.children };
+    }
+    return root;
+}
+
+            function sendToMindMap() {
+                if (!currentMd) return;
+                const tree = mdToTree(currentMd);
+                const json = JSON.stringify(tree);
+                const mindMapUrl = `/${project}/aicp-mind.html?import=${encodeURIComponent(json)}`;
+                window.open(mindMapUrl, '_blank');
+            }
+
+            btnSendToMind.addEventListener('click', sendToMindMap);
+            btnSendToMind2.addEventListener('click', sendToMindMap);
+
+            // ═══ 按钮事件 ═══
+            btnPreview.addEventListener('click', () => {
+                currentMode = 'preview';
+                btnPreview.classList.add('active');
+                btnSource.classList.remove('active');
+                renderPreview();
+            });
+
+            btnSource.addEventListener('click', () => {
+                currentMode = 'source';
+                btnSource.classList.add('active');
+                btnPreview.classList.remove('active');
+                renderPreview();
+            });
+
+            async function downloadZip() {
+                if (!currentMd) return;
+                try {
+                    const res = await fetch(`${API}/upload`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'download_zip',
+                            md_content: currentMd,
+                            original_name: currentOriginalName,
+                            images_dir: currentImagesDir
+                        })
+                    });
+                    if (!res.ok) throw new Error('Download failed');
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentOriginalName.replace(/\.[^.]+$/, '') + '_md.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (err) {
+                    alert('Download failed: ' + err.message);
+                }
+            }
+
+            btnDownload.addEventListener('click', downloadZip);
+            btnDownload2.addEventListener('click', downloadZip);
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js';
+            script.onload = () => { if (currentMd) renderPreview(); };
+            document.head.appendChild(script);
+        })();
+    </script>
+</body>
+</html>

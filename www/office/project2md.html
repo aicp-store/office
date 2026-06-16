@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project2MD — 项目分析</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        header h1 { font-size: 18px; font-weight: 600; }
+        header .actions { display: flex; gap: 8px; }
+
+        .btn {
+            padding: 7px 14px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+        .btn.primary:hover { background: #1557b0; }
+        .btn.accent { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .btn.accent:hover { background: #6d28d9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            width: 340px;
+            min-width: 340px;
+            background: #fafafa;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .input-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+        .input-group input:focus { border-color: #1a73e8; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid #e0e0e0;
+        }
+        .divider span {
+            font-size: 11px;
+            color: #999;
+            white-space: nowrap;
+        }
+
+        .scan-status {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            display: none;
+        }
+        .scan-status.active { display: block; }
+        .scan-status .name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+        .scan-status .info { font-size: 12px; color: #888; margin-bottom: 6px; }
+        .scan-status .status {
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .scan-status .status.loading { background: #fff3cd; color: #856404; }
+        .scan-status .status.ok { background: #d4edda; color: #155724; }
+        .scan-status .status.error { background: #f8d7da; color: #721c24; }
+        .scan-status .status.cached { background: #e8f0fe; color: #1a73e8; }
+        .scan-status .export-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .scan-status .export-actions .btn { font-size: 11px; padding: 5px 10px; }
+
+        .progress-container {
+            margin: 8px 0;
+            display: none;
+        }
+        .progress-container.active { display: block; }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e5e5;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        .progress-text {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+            text-align: center;
+        }
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+        .progress-step {
+            font-size: 10px;
+            color: #ccc;
+            transition: color 0.3s;
+        }
+        .progress-step.done { color: #22c55e; }
+        .progress-step.current { color: #6366f1; font-weight: 600; }
+
+        .history-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .history-section label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 8px;
+            min-height: 120px;
+        }
+        .history-item {
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .history-item:hover { background: #f0f0f0; }
+        .history-item .icon { font-size: 16px; }
+        .history-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-item .badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #e8f0fe; color: #1a73e8; }
+        .history-empty { color: #999; font-size: 13px; text-align: center; padding: 20px; }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+        .preview-toolbar .mode-btn {
+            padding: 5px 10px;
+            border: 1px solid #d0d0d0;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .preview-toolbar .mode-btn.active { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
+
+        .preview-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 32px;
+            background: #fff;
+        }
+        .preview-content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .empty-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: #bbb;
+            font-size: 15px;
+            background: #fff;
+            gap: 8px;
+        }
+        .empty-preview .icon { font-size: 48px; }
+        .empty-preview .hint { font-size: 13px; color: #ccc; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📦 Project2MD — 项目分析</h1>
+        <div class="actions" id="headerActions">
+            <button class="btn accent" id="btnSendToMind" disabled>🧠 思维导图</button>
+            <button class="btn" id="btnSendToEditor" disabled>📝 编辑器</button>
+            <button class="btn" id="btnDownload" disabled>⬇ 下载 MD</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="input-group">
+                <label>🔗 GitHub URL</label>
+                <input type="text" id="githubInput" placeholder="https://github.com/user/repo">
+                <button class="btn primary" id="btnScanGitHub" style="width:100%;">🔍 分析 GitHub 项目</button>
+            </div>
+
+            <div class="divider"><span>or</span></div>
+
+            <div class="input-group">
+                <label>📁 本地路径</label>
+                <input type="text" id="localPathInput" placeholder="C:\Users\me\my-project  or  /home/me/project">
+                <button class="btn primary" id="btnScanLocal" style="width:100%;">🔍 分析本地项目</button>
+            </div>
+
+            <div class="scan-status" id="scanStatus">
+                <div class="name" id="scanName"></div>
+                <div class="info" id="scanInfo"></div>
+                <div class="status" id="scanStatusText"></div>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">准备中...</div>
+                    <div class="progress-steps">
+                        <span class="progress-step" data-step="clone">📥 拉取代码</span>
+                        <span class="progress-step" data-step="scan">🔍 扫描文件</span>
+                        <span class="progress-step" data-step="llm">🤖 AI 分析</span>
+                        <span class="progress-step" data-step="build">📝 生成文档</span>
+                        <span class="progress-step" data-step="done">✅ 完成</span>
+                    </div>
+                </div>
+                <div class="export-actions" id="exportActions" style="display:none;">
+                    <button class="btn accent" id="btnSendToMind2">🧠 思维导图</button>
+                    <button class="btn" id="btnSendToEditor2">📝 编辑器</button>
+                    <button class="btn" id="btnDownload2">⬇ MD</button>
+                    <button class="btn" id="btnRefresh">🔄 刷新</button>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <label>📋 历史记录</label>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">暂无记录</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="preview-toolbar" id="previewToolbar" style="display:none;">
+                <button class="mode-btn active" id="btnPreview">👁 Preview</button>
+                <button class="mode-btn" id="btnSource">&lt;/&gt; Source</button>
+            </div>
+            <div class="preview-content markdown-body" id="previewContent" style="display:none;"></div>
+            <div class="empty-preview" id="emptyPreview">
+                <div class="icon">📦</div>
+                <div>输入 GitHub URL 或本地路径开始分析</div>
+                <div class="hint">支持 Python / Go / Rust / JS / TS / Java 等项目</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const project = window.location.pathname.split('/')[1];
+            const API = `/api/applications/${project}/folder_scan`;
+
+            let currentMd = '';
+            let currentTree = null;
+            let currentSource = '';
+            let currentName = '';
+            let currentScanId = '';
+            let ws = null;
+
+            const githubInput = document.getElementById('githubInput');
+            const localPathInput = document.getElementById('localPathInput');
+            const btnScanGitHub = document.getElementById('btnScanGitHub');
+            const btnScanLocal = document.getElementById('btnScanLocal');
+            const scanStatus = document.getElementById('scanStatus');
+            const scanName = document.getElementById('scanName');
+            const scanInfo = document.getElementById('scanInfo');
+            const scanStatusText = document.getElementById('scanStatusText');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const exportActions = document.getElementById('exportActions');
+            const previewToolbar = document.getElementById('previewToolbar');
+            const previewContent = document.getElementById('previewContent');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const historyList = document.getElementById('historyList');
+            const btnPreview = document.getElementById('btnPreview');
+            const btnSource = document.getElementById('btnSource');
+            const btnRefresh = document.getElementById('btnRefresh');
+
+            const btnSendToMind = document.getElementById('btnSendToMind');
+            const btnSendToEditor = document.getElementById('btnSendToEditor');
+            const btnDownload = document.getElementById('btnDownload');
+            const btnSendToMind2 = document.getElementById('btnSendToMind2');
+            const btnSendToEditor2 = document.getElementById('btnSendToEditor2');
+            const btnDownload2 = document.getElementById('btnDownload2');
+
+            let currentMode = 'preview';
+
+            // ==================== WebSocket ====================
+            async function connectWS(scanId) {
+    if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+    if (!scanId) return;
+    try {
+        const cfg = await fetch('/api/ws_config').then(r => r.json());
+        console.log('ws_config:', cfg);
+        const wsUrl = `${cfg.url}?channel=room_project2md_${scanId}`;
+        console.log('Connecting WS:', wsUrl);
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => console.log('WS connected!');
+        ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    // 广播消息的数据在 payload 里
+    const progress = d.payload && d.payload.type === 'progress' ? d.payload : 
+                     d.type === 'progress' ? d : null;
+    if (progress && progress.scan_id === scanId) {
+        updateProgressFromWS(progress);
+    }
+};
+        ws.onerror = (e) => console.error('WS error:', e);
+        ws.onclose = (e) => console.log('WS closed:', e.code);
+    } catch(e) {
+        console.error('WS connect failed:', e);
+    }
+}
+
+function disconnectWS() {
+    if (ws) {
+        try { ws.close(); } catch(e) {}
+        ws = null;
+    }
+}
+
+function updateProgressFromWS(progress) {
+    const { stage, percent, message } = progress;
+    progressContainer.classList.add('active');
+    progressFill.style.width = percent + '%';
+    progressText.textContent = message;
+
+    // ✅ 同步更新左侧状态文字
+    scanStatusText.textContent = message;
+    scanStatusText.className = 'status loading';
+
+    // Update step indicators
+    const steps = ['clone', 'scan', 'llm', 'build', 'done'];
+    const stageIdx = steps.indexOf(stage);
+
+    document.querySelectorAll('.progress-step').forEach(el => {
+        el.classList.remove('done', 'current');
+        const elIdx = steps.indexOf(el.dataset.step);
+        if (elIdx < stageIdx) el.classList.add('done');
+        if (elIdx === stageIdx) el.classList.add('current');
+    });
+
+    if (stage === 'done' || stage === 'error') {
+        setTimeout(() => {
+            progressContainer.classList.remove('active');
+        }, 1500);
+        if (stage === 'done') {
+            scanStatusText.textContent = '✅ 分析完成';
+            scanStatusText.className = 'status ok';
+            exportActions.style.display = 'flex';
+        }
+        disconnectWS();
+    }
+}
+
+            // ==================== History ====================
+            function getHistory() {
+                try { return JSON.parse(localStorage.getItem('project2md_history') || '[]'); }
+                catch(e) { return []; }
+            }
+
+            function saveHistory(source, name, info) {
+                let h = getHistory();
+                h = h.filter(item => item.source !== source);
+                h.unshift({ source, name, info, time: Date.now() });
+                if (h.length > 20) h = h.slice(0, 20);
+                localStorage.setItem('project2md_history', JSON.stringify(h));
+                renderHistory();
+            }
+
+            function renderHistory() {
+                const h = getHistory();
+                if (h.length === 0) {
+                    historyList.innerHTML = '<div class="history-empty">暂无记录</div>';
+                    return;
+                }
+                historyList.innerHTML = h.map(item => `
+                    <div class="history-item" data-source="${escapeHtml(item.source)}">
+                        <span class="icon">${item.source.startsWith('http') ? '🔗' : '📁'}</span>
+                        <span class="name">${escapeHtml(item.name)}</span>
+                        <span class="badge">${escapeHtml(item.info || '')}</span>
+                    </div>
+                `).join('');
+
+                historyList.querySelectorAll('.history-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const src = el.dataset.source;
+                        if (src.startsWith('http')) githubInput.value = src;
+                        else localPathInput.value = src;
+                        doScan(src);
+                    });
+                });
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // ==================== Scan ====================
+            btnScanGitHub.addEventListener('click', () => {
+                const url = githubInput.value.trim();
+                if (!url) { alert('请输入 GitHub URL'); return; }
+                if (!url.startsWith('https://github.com/')) {
+                    alert('请输入有效的 GitHub URL');
+                    return;
+                }
+                doScan(url);
+            });
+
+            btnScanLocal.addEventListener('click', () => {
+                const path = localPathInput.value.trim();
+                if (!path) { alert('请输入本地路径'); return; }
+                doScan(path);
+            });
+
+            [githubInput, localPathInput].forEach(input => {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        if (input === githubInput) btnScanGitHub.click();
+                        else btnScanLocal.click();
+                    }
+                });
+            });
+
+            async function doScan(source) {
+                currentSource = source;
+                currentScanId = 'scan_' + Date.now();
+
+                scanName.textContent = source;
+                scanInfo.textContent = '';
+                scanStatusText.textContent = '⏳ 分析中...';
+                scanStatusText.className = 'status loading';
+                scanStatus.classList.add('active');
+                exportActions.style.display = 'none';
+                previewContent.style.display = 'none';
+                emptyPreview.style.display = 'none';
+                previewToolbar.style.display = 'none';
+                setButtonsEnabled(false);
+
+                // Reset progress
+                progressContainer.classList.add('active');
+                progressFill.style.width = '0%';
+                progressText.textContent = '准备中...';
+                document.querySelectorAll('.progress-step').forEach(el => {
+                    el.classList.remove('done', 'current');
+                });
+
+                // Connect WebSocket for real-time progress
+                connectWS(currentScanId);
+
+                try {
+                    const res = await fetch(API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'scan',
+                            source,
+                            scan_id: currentScanId,
+                        })
+                    });
+
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                    const data = await res.json();
+                    if (!data.ok) throw new Error(data.error || 'Scan failed');
+
+                    currentMd = data.md_content;
+                    currentTree = data.tree;
+                    currentName = data.original_name;
+
+                    scanName.textContent = data.original_name;
+                    scanInfo.textContent = data.file_type;
+                    scanStatusText.textContent = data.from_cache ? '✅ 来自缓存' : '✅ 分析完成';
+                    scanStatusText.className = data.from_cache ? 'status cached' : 'status ok';
+                    exportActions.style.display = 'flex';
+
+                    // Mark progress done
+                    progressFill.style.width = '100%';
+                    progressText.textContent = '✅ 完成';
+                    document.querySelectorAll('.progress-step').forEach(el => el.classList.add('done'));
+                    setTimeout(() => progressContainer.classList.remove('active'), 1500);
+
+                    saveHistory(source, data.original_name, data.file_type);
+
+                    previewToolbar.style.display = 'flex';
+                    previewContent.style.display = 'block';
+                    emptyPreview.style.display = 'none';
+                    setButtonsEnabled(true);
+                    currentMode = 'preview';
+                    btnPreview.classList.add('active');
+                    btnSource.classList.remove('active');
+                    renderPreview();
+
+                    
+
+                } catch (err) {
+                    progressFill.style.width = '100%';
+                    progressText.textContent = '❌ ' + err.message;
+                    scanStatusText.textContent = '❌ ' + err.message;
+                    scanStatusText.className = 'status error';
+                    setTimeout(() => progressContainer.classList.remove('active'), 2000);
+                    disconnectWS();
+                }
+            }
+
+            btnRefresh.addEventListener('click', async () => {
+                if (!currentSource) return;
+
+                currentScanId = 'scan_' + Date.now();
+                scanStatusText.textContent = '⏳ 强制刷新...';
+                scanStatusText.className = 'status loading';
+                exportActions.style.display = 'none';
+                previewContent.style.display = 'none';
+                emptyPreview.style.display = 'none';
+                previewToolbar.style.display = 'none';
+                setButtonsEnabled(false);
+
+                progressContainer.classList.add('active');
+                progressFill.style.width = '0%';
+                progressText.textContent = '准备中...';
+                document.querySelectorAll('.progress-step').forEach(el => {
+                    el.classList.remove('done', 'current');
+                });
+
+                connectWS(currentScanId);
+
+                try {
+                    const res = await fetch(API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'scan',
+                            source: currentSource,
+                            scan_id: currentScanId,
+                            force_refresh: true,
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (!data.ok) throw new Error(data.error || 'Scan failed');
+
+                    currentMd = data.md_content;
+                    currentTree = data.tree;
+                    scanStatusText.textContent = '✅ 已刷新';
+                    scanStatusText.className = 'status ok';
+                    exportActions.style.display = 'flex';
+
+                    progressFill.style.width = '100%';
+                    progressText.textContent = '✅ 完成';
+                    document.querySelectorAll('.progress-step').forEach(el => el.classList.add('done'));
+                    setTimeout(() => progressContainer.classList.remove('active'), 1500);
+
+                    previewToolbar.style.display = 'flex';
+                    previewContent.style.display = 'block';
+                    emptyPreview.style.display = 'none';
+                    setButtonsEnabled(true);
+                    renderPreview();
+                    disconnectWS();
+                } catch (err) {
+                    progressText.textContent = '❌ ' + err.message;
+                    scanStatusText.textContent = '❌ ' + err.message;
+                    scanStatusText.className = 'status error';
+                    setTimeout(() => progressContainer.classList.remove('active'), 2000);
+                    disconnectWS();
+                }
+            });
+
+            function setButtonsEnabled(enabled) {
+                [btnSendToMind, btnSendToEditor, btnDownload,
+                 btnSendToMind2, btnSendToEditor2, btnDownload2].forEach(b => b.disabled = !enabled);
+            }
+
+            function renderPreview() {
+                if (!currentMd) return;
+                if (currentMode === 'preview') {
+                    if (window.markdownit) {
+                        previewContent.innerHTML = window.markdownit({ html: true, breaks: true, linkify: true }).render(currentMd);
+                    } else {
+                        previewContent.innerHTML = '<p>Loading parser...</p>';
+                    }
+                } else {
+                    previewContent.innerHTML = `<pre>${escapeHtml(currentMd)}</pre>`;
+                }
+            }
+
+            btnPreview.addEventListener('click', () => {
+                currentMode = 'preview';
+                btnPreview.classList.add('active');
+                btnSource.classList.remove('active');
+                renderPreview();
+            });
+
+            btnSource.addEventListener('click', () => {
+                currentMode = 'source';
+                btnSource.classList.add('active');
+                btnPreview.classList.remove('active');
+                renderPreview();
+            });
+
+            function sendToMindMap() {
+                if (!currentTree) return;
+                const json = JSON.stringify(currentTree);
+                window.open(`/${project}/aicp-mind.html?import=${encodeURIComponent(json)}`, '_blank');
+            }
+
+            function sendToEditor() {
+                if (!currentMd) return;
+                window.open(`/${project}/text-processor.html?content=${encodeURIComponent(currentMd)}`, '_blank');
+            }
+
+            function downloadMD() {
+                if (!currentMd) return;
+                const blob = new Blob([currentMd], { type: 'text/markdown' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = (currentName || 'project') + '_analysis.md';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+
+            btnSendToMind.addEventListener('click', sendToMindMap);
+            btnSendToMind2.addEventListener('click', sendToMindMap);
+            btnSendToEditor.addEventListener('click', sendToEditor);
+            btnSendToEditor2.addEventListener('click', sendToEditor);
+            btnDownload.addEventListener('click', downloadMD);
+            btnDownload2.addEventListener('click', downloadMD);
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/markdown-it@13/dist/markdown-it.min.js';
+            document.head.appendChild(script);
+
+            renderHistory();
+        })();
+    </script>
+</body>
+</html>
